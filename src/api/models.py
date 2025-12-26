@@ -97,3 +97,21 @@ class ErrorResponse(BaseModel):
     """Error response model."""
     error: str = Field(..., description="Error message")
     detail: Optional[str] = Field(default=None, description="Detailed error info")
+
+
+class ConfigUpdateRequest(BaseModel):
+    """Request model for updating configuration."""
+    chunking_strategy: Optional[ChunkingStrategy] = Field(None, description="Chunking strategy")
+    retrieval_k: Optional[int] = Field(None, ge=1, le=10, description="Number of documents to retrieve")
+
+
+class ConfigResponse(BaseModel):
+    """Response model for configuration."""
+    chunking_strategy: str = Field(..., description="Current chunking strategy")
+    retrieval_k: int = Field(..., description="Current retrieval k value")
+
+
+class DatabasesResponse(BaseModel):
+    """Response model for listing available databases."""
+    databases: list[str] = Field(..., description="List of ChromaDB collection names")
+    count: int = Field(..., description="Number of available databases")

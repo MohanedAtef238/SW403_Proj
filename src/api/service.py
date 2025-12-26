@@ -21,9 +21,9 @@ class RAGService:
         self.pipelines: dict[str, RetrievalPipeline] = {}
         self.indexed_files: dict[str, list[str]] = {}
     
-    def get_or_create_pipeline(self, strategy: ChunkingStrategy) -> RetrievalPipeline:
+    def get_or_create_pipeline(self, strategy: ChunkingStrategy, source_dir: str | None = None) -> RetrievalPipeline:
         """Get existing pipeline or create a new one."""
-        key = strategy.value
+        key = f"{source_dir}_{strategy.value}" if source_dir else strategy.value
         
         if key not in self.pipelines:
             chunker = get_chunker(
@@ -31,7 +31,7 @@ class RAGService:
                 chunk_size=settings.CHUNK_SIZE,
                 chunk_overlap=settings.CHUNK_OVERLAP,
             )
-            self.pipelines[key] = RetrievalPipeline(chunker=chunker)
+            self.pipelines[key] = RetrievalPipeline(chunker=chunker, source_dir=source_dir)
             self.indexed_files[key] = []
             
         return self.pipelines[key]
@@ -43,8 +43,14 @@ class RAGService:
         base_path: str = "data"
     ) -> tuple[int, int]:
         """Index files using the specified strategy."""
-        pipeline = self.get_or_create_pipeline(strategy)
-        key = strategy.value
+        source_dir = None
+        if file_paths:
+            first_path = Path(file_paths[0])
+            if first_path.parts:
+                source_dir = first_path.parts[0]
+        
+        pipeline = self.get_or_create_pipeline(strategy, source_dir)
+        key = f"{source_dir}_{strategy.value}" if source_dir else strategy.value
         
         full_paths = [str(Path(base_path) / fp) for fp in file_paths]
         docs = load_python_files(full_paths)
@@ -85,6 +91,13 @@ class RAGService:
         retrieved_docs = pipeline.search(query, k=k)
         
         return answer, retrieved_docs
+
+    def list_collections(self) -> list[str]:
+        """List all available ChromaDB collections."""
+        import chromadb
+        client = chromadb.PersistentClient(path=str(settings.VECTOR_DB_DIR))
+        collections = client.list_collections()
+        return [col.name for col in collections]
 
 
 rag_service = RAGService()

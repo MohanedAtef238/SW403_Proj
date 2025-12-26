@@ -17,8 +17,12 @@ from .models import (
     QueryRequest,
     QueryResponse,
     ChunkInfo,
+    ConfigUpdateRequest,
+    ConfigResponse,
+    DatabasesResponse,
 )
 from .service import rag_service
+from src.config import settings
 
 
 @asynccontextmanager
@@ -56,6 +60,44 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return HealthResponse()
+
+
+@app.get("/config", response_model=ConfigResponse, tags=["Configuration"])
+async def get_config():
+    """Get current configuration."""
+    return ConfigResponse(
+        chunking_strategy=settings.CHUNKING_STRATEGY,
+        retrieval_k=settings.RETRIEVAL_K,
+    )
+
+
+@app.post("/config", response_model=ConfigResponse, tags=["Configuration"])
+async def update_config(request: ConfigUpdateRequest):
+    """Update configuration settings."""
+    if request.chunking_strategy is not None:
+        strategy = request.chunking_strategy.value
+        settings.CHUNKING_STRATEGY = strategy
+        if strategy in ["recursive", "code", "ast"]:
+            settings.RETRIEVAL_MODE = "vector"
+        elif strategy == "graphrag":
+            settings.RETRIEVAL_MODE = "graph"
+    if request.retrieval_k is not None:
+        settings.RETRIEVAL_K = request.retrieval_k
+    
+    return ConfigResponse(
+        chunking_strategy=settings.CHUNKING_STRATEGY,
+        retrieval_k=settings.RETRIEVAL_K,
+    )
+
+
+@app.get("/databases", response_model=DatabasesResponse, tags=["Databases"])
+async def list_databases():
+    """List available ChromaDB collections."""
+    collections = rag_service.list_collections()
+    return DatabasesResponse(
+        databases=collections,
+        count=len(collections),
+    )
 
 
 @app.post("/index", response_model=IndexResponse, tags=["Indexing"])
