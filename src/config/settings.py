@@ -1,0 +1,54 @@
+"""
+Configuration settings for the RAG pipeline.
+Loads environment variables and defines model/chunking parameters.
+"""
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+
+class Settings:
+    """Central configuration for RAG experiments."""
+
+    # API Keys
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
+    LANGSMITH_TRACING: str = os.getenv("LANGSMITH_TRACING", "true")
+
+    # LLM Configuration
+    LLM_MODEL: str = "qwen/qwen3-32b"
+    LLM_TEMPERATURE: float = 0
+    LLM_MAX_RETRIES: int = 2
+
+    # Embeddings Configuration
+    EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
+
+    # Chunking Configuration
+    # Options: "recursive", "code", "ast"
+    CHUNKING_STRATEGY: str = "code"
+    
+    # Retrieval Mode: "vector" or "graph"
+    RETRIEVAL_MODE: str = "graph"
+
+    # Recursive chunker settings
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
+
+    # Semantic chunker settings (for future use)
+    SEMANTIC_BREAKPOINT_THRESHOLD: float = 0.5
+
+    # Retrieval Configuration
+    RETRIEVAL_K: int = 2
+
+    def __init__(self):
+        # Set environment variables for LangChain/LangSmith
+        os.environ["GROQ_API_KEY"] = self.GROQ_API_KEY
+        os.environ["LANGSMITH_API_KEY"] = self.LANGSMITH_API_KEY
+        os.environ["LANGSMITH_TRACING"] = self.LANGSMITH_TRACING
+
+
+settings = Settings()
