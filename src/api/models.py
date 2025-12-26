@@ -115,3 +115,13 @@ class DatabasesResponse(BaseModel):
     """Response model for listing available databases."""
     databases: list[str] = Field(..., description="List of ChromaDB collection names")
     count: int = Field(..., description="Number of available databases")
+
+
+class UploadResponse(BaseModel):
+    """Response for zip file upload and indexing."""
+    success: bool = Field(..., description="Whether upload and indexing was successful")
+    message: str = Field(..., description="Status message")
+    num_documents: int = Field(default=0, description="Number of files extracted and indexed")
+    num_chunks: int = Field(default=0, description="Number of chunks created")
+    strategy_used: str = Field(..., description="Chunking strategy used")
+    collection_name: str = Field(..., description="ChromaDB collection name created")

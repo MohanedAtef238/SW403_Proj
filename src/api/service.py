@@ -3,6 +3,10 @@ RAG Pipeline Service - manages pipelines for different chunking strategies.
 """
 
 from pathlib import Path
+import tempfile
+import zipfile
+from typing import Any
+
 from langchain_core.documents import Document
 
 from src.api.utils import load_system_prompt
@@ -95,6 +99,58 @@ class RAGService:
         retrieved_docs = pipeline.search(query, k=k)
         
         return answer, retrieved_docs
+
+    def index_from_zip(
+        self,
+        zip_file: Any,
+        zip_name: str,
+        strategy: ChunkingStrategy,
+    ) -> tuple[int, int, str]:
+        """
+        Extract and index Python files from a zip archive.
+        
+        Args:
+            zip_file: SpooledTemporaryFile from FastAPI's UploadFile
+            zip_name: Original filename of the uploaded zip
+            strategy: Chunking strategy to use
+            
+        Returns:
+            Tuple of (num_documents, num_chunks, collection_name)
+        """
+        source_dir = Path(zip_name).stem  # Use zip name as source identifier
+        
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            
+            # Extract zip contents
+            with zipfile.ZipFile(zip_file) as zf:
+                zf.extractall(tmp_path)
+            
+            # Collect all .py files, excluding common non-source directories
+            py_files = [
+                f for f in tmp_path.glob("**/*.py")
+                if not any(part.startswith('.') or part in ('__pycache__', 'node_modules', 'venv', '.venv')
+                           for part in f.parts)
+            ]
+            
+            if not py_files:
+                return 0, 0, ""
+            
+            # Load documents
+            docs = load_python_files([str(f) for f in py_files])
+            
+            if not docs:
+                return 0, 0, ""
+            
+            # Create pipeline and index
+            pipeline = self.get_or_create_pipeline(strategy, source_dir)
+            doc_ids = pipeline.index_documents(docs)
+            
+            # Build collection name (matches RetrievalPipeline naming)
+            model_slug = settings.LLM_MODEL.split("/")[-1].replace("-", "_").replace(".", "_")
+            collection_name = f"{source_dir}_{strategy.value}_{model_slug}"
+            
+            return len(docs), len(doc_ids), collection_name
 
     def list_collections(self) -> list[str]:
         """List all available ChromaDB collections."""
