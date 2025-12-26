@@ -5,6 +5,7 @@ RAG Pipeline Service - manages pipelines for different chunking strategies.
 from pathlib import Path
 from langchain_core.documents import Document
 
+from src.api.utils import load_system_prompt
 from src.config import settings
 from src.loaders import load_python_files
 from src.chunking import get_chunker
@@ -78,7 +79,10 @@ class RAGService:
         
         # initiating and running agents
         retrieval_tool = pipeline.create_retrieval_tool()
-        agent = create_rag_agent(tools=[retrieval_tool])
+
+
+        system_prompt = load_system_prompt("./system_prompt")
+        agent = create_rag_agent(tools=[retrieval_tool], system_prompt = system_prompt)
         
         messages = [{"role": "user", "content": query}]
         result = agent.invoke({"messages": messages})
