@@ -72,10 +72,22 @@ class RAGService:
         self,
         query: str,
         strategy: ChunkingStrategy,
-        k: int = 3
+        k: int = 3,
+        collection: str | None = None
     ) -> tuple[str, list[Document]]:
-        """Query using the RAG agent."""
-        pipeline = self.get_or_create_pipeline(strategy)
+        """Query using the RAG agent.
+        
+        Args:
+            query: The user's question
+            strategy: Chunking strategy (used if no collection specified)
+            k: Number of documents to retrieve
+            collection: Optional ChromaDB collection name to query directly
+        """
+        if collection:
+            # Query a specific collection directly
+            pipeline = self._get_pipeline_for_collection(collection)
+        else:
+            pipeline = self.get_or_create_pipeline(strategy)
         
         # Temporarily set k
         original_k = settings.RETRIEVAL_K
@@ -99,6 +111,42 @@ class RAGService:
         retrieved_docs = pipeline.search(query, k=k)
         
         return answer, retrieved_docs
+
+    def _get_pipeline_for_collection(self, collection_name: str) -> RetrievalPipeline:
+        """Get or create a pipeline for a specific ChromaDB collection."""
+        if collection_name in self.pipelines:
+            return self.pipelines[collection_name]
+        
+        parts = collection_name.split("_")
+        strategy_name = "recursive"
+        for part in parts:
+            if part in ("recursive", "code", "ast", "graphrag"):
+                strategy_name = part
+                break
+        
+        chunker = get_chunker(
+            strategy_name,
+            chunk_size=settings.CHUNK_SIZE,
+            chunk_overlap=settings.CHUNK_OVERLAP,
+        )
+        
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_chroma import Chroma
+        
+        embeddings = HuggingFaceEmbeddings(model_name=settings.EMBEDDING_MODEL)
+        chroma = Chroma(
+            collection_name=collection_name,
+            embedding_function=embeddings,
+            persist_directory=settings.VECTOR_DB_DIR,
+        )
+        
+        pipeline = RetrievalPipeline(chunker=chunker)
+        pipeline.chroma = chroma
+        pipeline.vector_store = chroma
+        pipeline.embeddings = embeddings
+        
+        self.pipelines[collection_name] = pipeline
+        return pipeline
 
     def index_from_zip(
         self,

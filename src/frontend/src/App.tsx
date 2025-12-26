@@ -81,7 +81,8 @@ function App() {
         body: JSON.stringify({
           query: query,
           strategy: strategy,
-          k: topK
+          k: topK,
+          collection: selectedDatabase
         })
       });
 

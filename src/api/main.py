@@ -137,6 +137,7 @@ async def query(request: QueryRequest):
             query=request.query,
             strategy=request.strategy,
             k=request.k,
+            collection=request.collection,
         )
         
         # Convert retrieved docs to ChunkInfo

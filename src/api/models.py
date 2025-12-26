@@ -56,6 +56,10 @@ class QueryRequest(BaseModel):
         le=10,
         description="Number of documents to retrieve"
     )
+    collection: Optional[str] = Field(
+        default=None,
+        description="ChromaDB collection name to query. If not provided, uses default collection."
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -63,7 +67,8 @@ class QueryRequest(BaseModel):
                 {
                     "query": "What classes are defined in the code?",
                     "strategy": "ast",
-                    "k": 3
+                    "k": 3,
+                    "collection": "my_project_recursive_gemma2_9b_it"
                 }
             ]
         }
