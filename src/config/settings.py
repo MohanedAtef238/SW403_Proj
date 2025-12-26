@@ -32,7 +32,7 @@ class Settings:
     CHUNKING_STRATEGY: str = "code"
     
     # Retrieval Mode: "vector" or "graph"
-    RETRIEVAL_MODE: str = "graph"
+    RETRIEVAL_MODE: str = "vector"
 
     # Recursive chunker settings
     CHUNK_SIZE: int = 1000
@@ -43,6 +43,11 @@ class Settings:
 
     # Retrieval Configuration
     RETRIEVAL_K: int = 2
+
+    # Storage Configuration
+    BASE_DIR: Path = Path(__file__).parent.parent.parent
+    DATA_DIR: Path = BASE_DIR / "data"
+    VECTOR_DB_DIR: str = str(BASE_DIR / "chroma_db")
 
     def __init__(self):
         # Set environment variables for LangChain/LangSmith

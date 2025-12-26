@@ -17,18 +17,28 @@ class RetrievalPipeline:
     
     Args:
         chunker: Chunking strategy to use. If None, uses config default.
+        source_dir: Optional source directory name to include in collection name.
     """
     
-    def __init__(self, chunker: BaseChunker | None = None):
+    def __init__(self, chunker: BaseChunker | None = None, source_dir: str | None = None):
+        self.chunker = chunker or get_chunker(settings.CHUNKING_STRATEGY)
+        
         # Initialize embeddings
         self.embeddings = HuggingFaceEmbeddings(
             model_name=settings.EMBEDDING_MODEL
         )
+        # Create a safe collection name based on source dir, strategy and model
+        model_slug = settings.LLM_MODEL.split("/")[-1].replace("-", "_").replace(".", "_")
+        if source_dir:
+            collection_name = f"{source_dir}_{self.chunker.name}_{model_slug}"
+        else:
+            collection_name = f"{self.chunker.name}_{model_slug}"
         
         # Initialize Chroma vector store
         self.chroma = Chroma(
-            collection_name="code_rag",
+            collection_name=collection_name,
             embedding_function=self.embeddings,
+            persist_directory=settings.VECTOR_DB_DIR,
         )
         
         # Use GraphRAG retriever or standard vector store
@@ -43,9 +53,6 @@ class RetrievalPipeline:
             self.retriever = None  # Use vector_store directly
         
         self.vector_store = self.chroma
-        
-        # Initialize chunker
-        self.chunker = chunker or get_chunker(settings.CHUNKING_STRATEGY)
         
         # Track indexed documents
         self.document_ids: list[str] = []

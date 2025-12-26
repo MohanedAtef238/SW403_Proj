@@ -1,27 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, ChunkingStrategy } from './components/Sidebar';
 import { QueryInput } from './components/QueryInput';
 import { ResultsPanel } from './components/ResultsPanel';
 import { MetricsPanel } from './components/MetricsPanel';
 import { ComparisonMode } from './components/ComparisonMode';
-import { RAGStrategy, QueryComplexity, QueryResult, RetrievalConfig, CostConfig } from './types';
-import { generateMockResult } from './data/mockData';
+import { QueryResult } from './types';
+
+const API_BASE = 'http://127.0.0.1:8000';
 
 function App() {
-  const [codebase, setCodebase] = useState('ecommerce-platform');
-  const [strategy, setStrategy] = useState<RAGStrategy>('hybrid');
-  const [complexity, setComplexity] = useState<QueryComplexity>('multi-step');
-  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig>({
-    topK: 5,
-    contextWindow: 8000,
-    graphDepth: 3
-  });
-  const [costConfig, setCostConfig] = useState<CostConfig>({
-    tokenBudget: 5000,
-    latencyAccuracyTradeoff: false
-  });
+  const [strategy, setStrategy] = useState<ChunkingStrategy>('code');
+  const [topK, setTopK] = useState(3);
+  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
+  const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
   const [currentResult, setCurrentResult] = useState<QueryResult | null>(null);
@@ -29,22 +22,102 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
 
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const healthRes = await fetch(`${API_BASE}/health`);
+        setIsHealthy(healthRes.ok);
+
+        const configRes = await fetch(`${API_BASE}/config`);
+        if (configRes.ok) {
+          const data = await configRes.json();
+          if (data.chunking_strategy) setStrategy(data.chunking_strategy as ChunkingStrategy);
+          if (data.retrieval_k) setTopK(data.retrieval_k);
+        }
+      } catch (error) {
+        setIsHealthy(false);
+        console.error('Initialization failed:', error);
+      }
+    };
+
+    initialize();
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/health`);
+        setIsHealthy(res.ok);
+      } catch {
+        setIsHealthy(false);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleUpdateSettings = async () => {
+    try {
+      await fetch(`${API_BASE}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chunking_strategy: strategy,
+          retrieval_k: topK
+        })
+      });
+    } catch (error) {
+      console.error('Failed to update backend config:', error);
+    }
+  };
+
   const handleRunQuery = async () => {
     if (!query.trim()) return;
 
     setIsLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch(`${API_BASE}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query,
+          strategy: strategy,
+          k: topK
+        })
+      });
 
-    if (comparisonMode) {
-      const strategies: RAGStrategy[] = ['P1', 'P2', 'P3', 'P4'];
-      const results = strategies.map(s => generateMockResult(s));
-      setComparisonResults(results);
-      setCurrentResult(null);
-    } else {
-      const result = generateMockResult(strategy);
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Query failed:', error);
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      const result: QueryResult = {
+        strategy: data.strategy_used as any,
+        answer: data.answer,
+        context: data.retrieved_chunks.map((chunk: any, idx: number) => ({
+          id: `chunk-${idx}`,
+          content: chunk.content,
+          filePath: chunk.source,
+          language: 'python',
+          startLine: chunk.start_line || 0,
+          endLine: chunk.end_line || 0,
+        })),
+        reasoning: [],
+        metrics: {
+          retrievalTime: 0,
+          totalTokens: 0,
+          estimatedCost: 0,
+          relevanceScore: 0,
+          detectedComplexity: 'simple' as const,
+        }
+      };
+
       setCurrentResult(result);
       setComparisonResults([]);
+    } catch (error) {
+      console.error('Query error:', error);
     }
 
     setIsLoading(false);
@@ -53,20 +126,18 @@ function App() {
   return (
     <div className="h-screen flex flex-col bg-gray-950">
       <Header
-        selectedCodebase={codebase}
-        onCodebaseChange={setCodebase}
+        isHealthy={isHealthy}
+        selectedDatabase={selectedDatabase}
+        onDatabaseChange={setSelectedDatabase}
       />
 
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           strategy={strategy}
           onStrategyChange={setStrategy}
-          complexity={complexity}
-          onComplexityChange={setComplexity}
-          retrievalConfig={retrievalConfig}
-          onRetrievalConfigChange={setRetrievalConfig}
-          costConfig={costConfig}
-          onCostConfigChange={setCostConfig}
+          topK={topK}
+          onTopKChange={setTopK}
+          onSave={handleUpdateSettings}
         />
 
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -83,11 +154,10 @@ function App() {
             </h2>
             <button
               onClick={() => setComparisonMode(!comparisonMode)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                comparisonMode
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${comparisonMode
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <ArrowLeftRight className="w-4 h-4" />
               {comparisonMode ? 'Single Mode' : 'Compare All'}
