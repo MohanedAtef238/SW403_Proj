@@ -20,6 +20,7 @@ function App() {
   const [currentResult, setCurrentResult] = useState<QueryResult | null>(null);
   const [comparisonResults, setComparisonResults] = useState<QueryResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
 
 
@@ -80,7 +81,8 @@ function App() {
         body: JSON.stringify({
           query: query,
           strategy: strategy,
-          k: topK
+          k: topK,
+          collection: selectedDatabase
         })
       });
 
@@ -123,6 +125,30 @@ function App() {
     setIsLoading(false);
   };
 
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_BASE}/index/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Upload failed:', error.detail);
+      } else {
+        const data = await response.json();
+        console.log('Indexed:', data.message, 'Collection:', data.collection_name);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+    }
+    setIsUploading(false);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-950">
       <Header
@@ -138,6 +164,8 @@ function App() {
           topK={topK}
           onTopKChange={setTopK}
           onSave={handleUpdateSettings}
+          onUpload={handleUpload}
+          isUploading={isUploading}
         />
 
         <div className="flex-1 flex flex-col overflow-hidden">

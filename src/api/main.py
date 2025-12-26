@@ -7,7 +7,9 @@ Run with: uv run uvicorn src.api.main:app --reload
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+import zipfile
+
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 from .models import (
@@ -17,9 +19,11 @@ from .models import (
     QueryRequest,
     QueryResponse,
     ChunkInfo,
+    ChunkingStrategy,
     ConfigUpdateRequest,
     ConfigResponse,
     DatabasesResponse,
+    UploadResponse,
 )
 from .service import rag_service
 from src.config import settings
@@ -133,6 +137,7 @@ async def query(request: QueryRequest):
             query=request.query,
             strategy=request.strategy,
             k=request.k,
+            collection=request.collection,
         )
         
         # Convert retrieved docs to ChunkInfo
@@ -153,5 +158,40 @@ async def query(request: QueryRequest):
             strategy_used=request.strategy,
             num_chunks=len(chunks),
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/index/upload", response_model=UploadResponse, tags=["Indexing"])
+async def upload_zip(file: UploadFile = File(...)):
+    """
+    Upload a zip file containing Python code to index.
+    
+    Uses the currently configured chunking strategy from settings.
+    """
+    # Validate file type
+    if not file.filename or not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only .zip files are accepted")
+    
+    try:
+        num_docs, num_chunks, collection = rag_service.index_from_zip(
+            zip_file=file.file,
+            zip_name=file.filename,
+            strategy=ChunkingStrategy(settings.CHUNKING_STRATEGY),
+        )
+        
+        if num_docs == 0:
+            raise HTTPException(status_code=404, detail="No Python files found in archive")
+        
+        return UploadResponse(
+            success=True,
+            message=f"Indexed {num_docs} files into {num_chunks} chunks",
+            num_documents=num_docs,
+            num_chunks=num_chunks,
+            strategy_used=settings.CHUNKING_STRATEGY,
+            collection_name=collection,
+        )
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Invalid or corrupted zip file")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
