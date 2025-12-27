@@ -163,3 +163,5 @@ Thumbs.db
 #ChromaDB
 /chroma_db
 /data/test2
+kuzu_db
+kuzu_db.wal
