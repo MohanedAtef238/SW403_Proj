@@ -33,6 +33,6 @@ class SelfCheckGPT:
         sample_embed, inital_embed = self.embeddings.embed_documents(
             [sampled_response, inital_response]
         )
-        similarity = cosine_similarity(sampled_response, inital_embed)
+        similarity = cosine_similarity(sample_embed, inital_embed)
         hallucinating = True if similarity[0] > 0.5 else False
         return similarity, hallucinating
