@@ -3,7 +3,7 @@ Retrieval pipeline: embeddings, vector store, and retrieval tool.
 """
 
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+from langchain_astradb import AstraDBVectorStore
 from langchain_core.documents import Document
 from langchain.tools import tool
 
@@ -35,25 +35,23 @@ class RetrievalPipeline:
         else:
             collection_name = f"{self.chunker.name}_{model_slug}"
         
-        # Initialize Chroma vector store
-        self.chroma = Chroma(
+        # Initialize vector store
+        self.vector_store = AstraDBVectorStore(
             collection_name=collection_name,
-            embedding_function=self.embeddings,
-            persist_directory=settings.VECTOR_DB_DIR,
+            embedding=self.embeddings,
+            api_endpoint=settings.ASTRA_DB_API_ENDPOINT,
+            token=settings.ASTRA_DB_APPLICATION_TOKEN,
         )
         
-        # Use GraphRAG retriever or standard vector store
+        # Initialize Neo4j graph store for GraphRAG mode (P4)
+        self.graph_store = None
         if settings.RETRIEVAL_MODE == "graph":
-            from langchain_graph_retriever import GraphRetriever
-            self.retriever = GraphRetriever(
-                store=self.chroma,
-                edges=[("mentions", "mentioned_by")],  # Define relationships
-                k=settings.RETRIEVAL_K,
+            from src.retrieval.graph_store import CodeKnowledgeGraph
+            self.graph_store = CodeKnowledgeGraph(
+                uri=settings.NEO4J_URI,
+                user=settings.NEO4J_USER,
+                password=settings.NEO4J_PASSWORD,
             )
-        else:
-            self.retriever = None  # Use vector_store directly
-        
-        self.vector_store = self.chroma
         
         # Track indexed documents
         self.document_ids: list[str] = []
@@ -72,29 +70,44 @@ class RetrievalPipeline:
         chunks = self.chunker.split(documents)
         print(f"Split into {len(chunks)} chunks using {self.chunker.name} strategy")
         
+        # Build Neo4j knowledge graph if in graph mode
+        if self.graph_store and self.chunker.name == "graph":
+            self.graph_store.add_entities(chunks)
+            print("Built Neo4j Code Knowledge Graph")
+        
         # Add to vector store
         self.document_ids = self.vector_store.add_documents(documents=chunks)
         print(f"Indexed {len(self.document_ids)} documents")
         
         return self.document_ids
-    
+            
     def create_retrieval_tool(self):
-        """
-        Create a LangChain tool for retrieval.
-        
-        Returns:
-            A tool function that can be used with agents
-        """
-        retriever = self.retriever
+        """Create a LangChain tool for retrieval."""
         vector_store = self.vector_store
+        graph_store = self.graph_store
         k = settings.RETRIEVAL_K
         use_graph = settings.RETRIEVAL_MODE == "graph"
+        chunker_name = settings.CHUNKER_NAME  # Add this
+        pipeline_ref = self  # Add reference to self
         
         @tool(response_format="content_and_artifact")
         def retrieve_context(query: str):
             """Retrieve information to help answer a query."""
-            if use_graph and retriever:
-                retrieved_docs = retriever.invoke(query)
+            
+            # Use context-aware search for P3
+            if chunker_name == "context":
+                retrieved_docs = pipeline_ref.search_with_context(query, k=k)
+            # Use graph expansion for P4
+            elif use_graph and graph_store:
+                retrieved_docs = vector_store.similarity_search(query, k=k)
+                entity_names = [
+                    doc.metadata.get("name") 
+                    for doc in retrieved_docs 
+                    if doc.metadata.get("name")
+                ]
+                if entity_names:
+                    retrieved_docs = graph_store.hybrid_search(entity_names, max_depth=2)
+            # Default vector search for P1/P2
             else:
                 retrieved_docs = vector_store.similarity_search(query, k=k)
             
@@ -108,7 +121,7 @@ class RetrievalPipeline:
     
     def search(self, query: str, k: int | None = None) -> list[Document]:
         """
-        Direct similarity search.
+        Direct similarity search with optional graph expansion.
         
         Args:
             query: Search query
@@ -117,6 +130,33 @@ class RetrievalPipeline:
         Returns:
             List of matching documents
         """
-        if self.retriever and settings.RETRIEVAL_MODE == "graph":
-            return self.retriever.invoke(query)
-        return self.vector_store.similarity_search(query, k=k or settings.RETRIEVAL_K)
+        # Vector search first
+        vector_results = self.vector_store.similarity_search(query, k=k or settings.RETRIEVAL_K)
+        
+        # Expand with graph traversal for GraphRAG
+        if self.graph_store and settings.RETRIEVAL_MODE == "graph":
+            entity_names = [
+                doc.metadata.get("name") 
+                for doc in vector_results 
+                if doc.metadata.get("name")
+            ]
+            if entity_names:
+                return self.graph_store.hybrid_search(entity_names, max_depth=2)
+        
+        return vector_results
+    
+    
+    def search_with_context(self, query: str, k: int = 2) -> list[Document]:
+        """Search with adjacent chunk expansion for P3."""
+        results = self.vector_store.similarity_search(query, k=k)
+        expanded = []
+        for doc in results:
+            expanded.append(doc)
+            # Fetch prev/next chunks by ID
+            for adj_id in [doc.metadata.get("prev_chunk_id"), doc.metadata.get("next_chunk_id")]:
+                if adj_id:
+                    adj_docs = self.vector_store.similarity_search(
+                        "", k=1, filter={"chunk_id": adj_id}
+                    )
+                    expanded.extend(adj_docs)
+        return expanded

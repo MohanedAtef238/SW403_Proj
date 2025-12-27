@@ -3,10 +3,13 @@ Chunking module for text splitting strategies.
 
 Available Chunkers:
 -------------------
-1. RecursiveChunker - LangChain's default text splitter
-2. CodeChunker - LangChain's code-aware splitter
-3. ASTChunker - Custom AST-based Python code chunker
+P1: FunctionChunker - Simple function-level baseline
+P2: ASTChunker - cAST semantic chunking
+P3: ContextEnrichedChunker - cAST with relative positioning
+P4: GraphChunker - Code Knowledge Graph extraction
 
+- RecursiveChunker - Character-based splitting
+- CodeChunker - Language-aware character splitting
 Usage:
 ------
     from src.chunking import get_chunker
@@ -19,6 +22,9 @@ from .base import BaseChunker
 from .recursive import RecursiveChunker
 from .code import CodeChunker
 from .ast_chunker import ASTChunker
+from .function_chunker import FunctionChunker
+from .context_chunker import ContextEnrichedChunker
+from .graph_chunker import GraphChunker
 
 
 def get_chunker(strategy: str, **kwargs) -> BaseChunker:
@@ -33,9 +39,13 @@ def get_chunker(strategy: str, **kwargs) -> BaseChunker:
         BaseChunker instance
     """
     chunkers = {
+        "function": FunctionChunker,   # P1
+        "ast": ASTChunker,             # P2
+        "context": ContextEnrichedChunker,  # P3
+        "graph": GraphChunker,         # P4
+        # Legacy
         "recursive": RecursiveChunker,
         "code": CodeChunker,
-        "ast": ASTChunker,
     }
     
     if strategy not in chunkers:

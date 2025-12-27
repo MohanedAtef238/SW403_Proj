@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -830,6 +830,20 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-astradb"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "astrapy" },
+    { name = "langchain-core" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b9/64/31e1e93c42e773fab6346dd2f304ec58c1f06debeb008efbddedd1b68345/langchain_astradb-1.0.0.tar.gz", hash = "sha256:23686094c74802862e92fb45141f89092472bfdedb373bfd8b748d4caeecc11f", size = 91755, upload-time = "2025-10-23T10:43:47.472Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/b6/f68f71c95a8dc80540dff7e24406e312f733b014671a64ace7221f7fcb5c/langchain_astradb-1.0.0-py3-none-any.whl", hash = "sha256:867f07e3e328d48fc79243e336197695d2b1d79f6c5d161385322172eb7cb4fb", size = 60089, upload-time = "2025-10-23T10:43:46.278Z" },
+]
+
+[[package]]
 name = "langchain-chroma"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1165,6 +1179,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e0/47/dd32fa426cc72114383ac549964eecb20ecfd886d1e5ccf5340b55b02f57/mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f", size = 508106, upload-time = "2023-03-07T16:47:11.061Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c", size = 536198, upload-time = "2023-03-07T16:47:09.197Z" },
+]
+
+[[package]]
+name = "neo4j"
+version = "6.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/b2/87534fc0520e5f9db1432bacc3f8d0ce024608010babc4f65b96e0c34906/neo4j-6.0.3.tar.gz", hash = "sha256:7fb79e166e281aafd67d521f6611763ebcdc529f26db506c5605f91ddcd825ea", size = 239653, upload-time = "2025-11-06T16:57:57.012Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/fe/55ed1d4636defb57fae1f7be7818820aa8071d45949c91ef8649930e70c5/neo4j-6.0.3-py3-none-any.whl", hash = "sha256:a92023854da96aed4270e0d03d6429cdd7f0d3335eae977370934f4732de5678", size = 325433, upload-time = "2025-11-06T16:57:55.03Z" },
 ]
 
 [[package]]
@@ -1632,11 +1658,13 @@ dependencies = [
     { name = "fastapi" },
     { name = "graph-rag-example-helpers" },
     { name = "langchain" },
+    { name = "langchain-astradb" },
     { name = "langchain-chroma" },
     { name = "langchain-graph-retriever" },
     { name = "langchain-groq" },
     { name = "langchain-huggingface" },
     { name = "langchain-text-splitters" },
+    { name = "neo4j" },
     { name = "python-multipart" },
     { name = "sentence-transformers" },
     { name = "uvicorn" },
@@ -1648,11 +1676,13 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "graph-rag-example-helpers", specifier = ">=0.8.0" },
     { name = "langchain", specifier = ">=1.2.0" },
+    { name = "langchain-astradb", specifier = ">=1.0.0" },
     { name = "langchain-chroma", specifier = ">=1.1.0" },
     { name = "langchain-graph-retriever", specifier = ">=0.8.0" },
     { name = "langchain-groq", specifier = ">=1.0.0" },
     { name = "langchain-huggingface", specifier = ">=1.2.0" },
     { name = "langchain-text-splitters", specifier = ">=1.1.0" },
+    { name = "neo4j", specifier = ">=6.0.3" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "sentence-transformers", specifier = ">=5.2.0" },
     { name = "uvicorn", specifier = ">=0.32.0" },
@@ -2026,6 +2056,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/78/96/804520d0850c7db98e5ccb70282e29208723f0964e88ffd9d0da2f52ea09/python_multipart-0.0.21.tar.gz", hash = "sha256:7137ebd4d3bbf70ea1622998f902b97a29434a9e8dc40eb203bbcf7c2a2cba92", size = 37196, upload-time = "2025-12-17T09:24:22.446Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/aa/76/03af049af4dcee5d27442f71b6924f01f3efb5d2bd34f23fcd563f2cc5f5/python_multipart-0.0.21-py3-none-any.whl", hash = "sha256:cf7a6713e01c87aa35387f4774e812c4361150938d20d232800f75ffcf266090", size = 24541, upload-time = "2025-12-17T09:24:21.153Z" },
+]
+
+[[package]]
+name = "pytz"
+version = "2025.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/bf/abbd3cdfb8fbc7fb3d4d38d320f2441b1e7cbe29be4f23797b4a2b5d8aac/pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3", size = 320884, upload-time = "2025-03-25T02:25:00.538Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00", size = 509225, upload-time = "2025-03-25T02:24:58.468Z" },
 ]
 
 [[package]]
