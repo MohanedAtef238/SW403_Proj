@@ -1,5 +1,6 @@
+import torch
+import torch.nn.functional as F
 from langchain_huggingface import HuggingFaceEmbeddings
-from torch import cosine_similarity
 
 from src.agents.rag_agent import create_rag_agent, run_agent
 from src.api.models import ChunkingStrategy
@@ -32,7 +33,7 @@ class SelfCheckGPT:
         """
         # Initialize embeddings
         self.chunker = chunker or get_chunker(settings.CHUNKING_STRATEGY)
-        self.temp = settings.LLM_TEMPERATURE - temp_reducing_factor
+        self.temp = min (1, settings.LLM_TEMPERATURE + temp_reducing_factor)
         self.k = k
         self.embeddings = HuggingFaceEmbeddings(model_name=settings.EMBEDDING_MODEL)
         self.system_prompt = system_prompt
@@ -72,6 +73,9 @@ class SelfCheckGPT:
             [sampled_response, inital_response]
         )
 
-        similarity = cosine_similarity([sample_embed], [inital_embed]).item()
+        sample_tensor = torch.tensor(sample_embed).unsqueeze(0)
+        inital_tensor = torch.tensor(inital_embed).unsqueeze(0)
+        similarity = F.cosine_similarity(sample_tensor, inital_tensor).item()
+
         hallucinating = similarity <= 0.5
         return similarity, hallucinating
