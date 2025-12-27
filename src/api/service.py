@@ -201,7 +201,42 @@ class RAGService:
             model_slug = settings.LLM_MODEL.split("/")[-1].replace("-", "_").replace(".", "_")
             collection_name = f"{source_dir}_{strategy.value}_{model_slug}"
             
-            return len(docs), len(doc_ids), collection_name
+        return len(docs), len(doc_ids), collection_name
+
+    def check_hallucination(
+        self,
+        query: str,
+        response: str,
+        collection: str,
+        k: int = 3,
+    ) -> tuple[float, bool]:
+        """
+        Check if a response is hallucinating using SelfCheckGPT.
+        
+        Args:
+            query: The original user query
+            response: The response to check for hallucinations
+            collection: ChromaDB collection name to use
+            k: Number of documents to retrieve for the sampled response
+            
+        Returns:
+            Tuple of (similarity_score, is_hallucinating)
+        """
+        from src.retrieval.selfcheckgpt import SelfCheckGPT
+        
+        pipeline = self._get_pipeline_for_collection(collection)
+        
+        checker = SelfCheckGPT(
+            chunker=pipeline.chunker,
+            k=k,
+        )
+        
+        similarity, is_hallucinating = checker.is_hallucinating(
+            query=query,
+            inital_response=response,
+        )
+        
+        return similarity, is_hallucinating
 
     def list_collections(self) -> list[str]:
         """List all available ChromaDB collections."""

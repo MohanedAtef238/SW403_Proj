@@ -130,3 +130,35 @@ class UploadResponse(BaseModel):
     num_chunks: int = Field(default=0, description="Number of chunks created")
     strategy_used: str = Field(..., description="Chunking strategy used")
     collection_name: str = Field(..., description="ChromaDB collection name created")
+
+class SelfCheckRequest(BaseModel):
+    """Request model for hallucination self-check."""
+    query: str = Field(..., description="The original user query")
+    response: str = Field(..., description="The response to check for hallucinations")
+    collection: str = Field(..., description="ChromaDB collection name to use for generating the sampled response")
+    k: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Number of documents to retrieve for the sampled response"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "query": "What classes are defined in this code?",
+                    "response": "The code defines a UserService class.",
+                    "collection": "my_project_recursive_gemma2_9b_it",
+                    "k": 3
+                }
+            ]
+        }
+    }
+
+
+class SelfCheckResponse(BaseModel):
+    """Response model for hallucination self-check."""
+    is_hallucinating: bool = Field(..., description="True if hallucination detected")
+    similarity_score: float = Field(..., description="Cosine similarity between responses (0-1)")
+

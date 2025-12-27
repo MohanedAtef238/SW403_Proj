@@ -24,6 +24,8 @@ from .models import (
     ConfigResponse,
     DatabasesResponse,
     UploadResponse,
+    SelfCheckRequest,
+    SelfCheckResponse,
 )
 from .service import rag_service
 from src.config import settings
@@ -193,5 +195,29 @@ async def upload_zip(file: UploadFile = File(...)):
         )
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="Invalid or corrupted zip file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/selfcheck", response_model=SelfCheckResponse, tags=["Query"])
+async def self_check(request: SelfCheckRequest):
+    """
+    Check if a response is hallucinating using SelfCheckGPT.
+    
+    Generates a second response using the same query and collection,
+    then compares embeddings to detect potential hallucinations.
+    """
+    try:
+        similarity, is_hallucinating = rag_service.check_hallucination(
+            query=request.query,
+            response=request.response,
+            collection=request.collection,
+            k=request.k,
+        )
+        
+        return SelfCheckResponse(
+            is_hallucinating=is_hallucinating,
+            similarity_score=similarity,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

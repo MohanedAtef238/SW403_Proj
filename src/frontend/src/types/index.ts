@@ -34,9 +34,9 @@ export interface CodeSnippet {
 }
 
 export interface ReasoningStep {
-  step: number;
+  similarityScore: number;
   description: string;
-  action: string;
+  isHallucinating: boolean;
 }
 
 export interface Metrics {

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { FileCode, MessageSquare, GitBranch, Network } from 'lucide-react';
 import { ResultTab, QueryResult } from '../types';
 import { CodeSnippet } from './CodeSnippet';
@@ -8,17 +7,18 @@ import { GraphView } from './GraphView';
 interface ResultsPanelProps {
   result: QueryResult | null;
   isLoading: boolean;
+  activeTab: ResultTab;
+  onTabChange: (tab: ResultTab) => void;
 }
 
 const tabs = [
   { value: 'answer' as const, label: 'Answer', icon: MessageSquare },
   { value: 'context' as const, label: 'Retrieved Context', icon: FileCode },
-  { value: 'reasoning' as const, label: 'Reasoning Trace', icon: GitBranch },
+  { value: 'reasoning' as const, label: 'Self Check', icon: GitBranch },
   { value: 'graph' as const, label: 'Graph View', icon: Network }
 ];
 
-export function ResultsPanel({ result, isLoading }: ResultsPanelProps) {
-  const [activeTab, setActiveTab] = useState<ResultTab>('answer');
+export function ResultsPanel({ result, isLoading, activeTab, onTabChange }: ResultsPanelProps) {
 
   if (isLoading) {
     return (
@@ -54,12 +54,11 @@ export function ResultsPanel({ result, isLoading }: ResultsPanelProps) {
           return (
             <button
               key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.value
-                  ? 'border-blue-500 text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              onClick={() => onTabChange(tab.value)}
+              className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.value
+                ? 'border-blue-500 text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
