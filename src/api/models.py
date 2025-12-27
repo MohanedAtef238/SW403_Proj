@@ -8,9 +8,13 @@ from pydantic import BaseModel, Field
 
 class ChunkingStrategy(str, Enum):
     """Available chunking strategies."""
+    FUNCTION = "function"   # P1: Baseline
+    AST = "ast"             # P2: cAST
+    CONTEXT = "context"     # P3: Context-enriched
+    GRAPH = "graph"         # P4: GraphRAG
+    # Legacy
     RECURSIVE = "recursive"
     CODE = "code"
-    AST = "ast"
 
 
 class IndexRequest(BaseModel):
