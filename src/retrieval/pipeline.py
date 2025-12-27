@@ -31,9 +31,14 @@ class RetrievalPipeline:
         # Create a safe collection name based on source dir, strategy and model
         model_slug = settings.LLM_MODEL.split("/")[-1].replace("-", "_").replace(".", "_")
         if source_dir:
-            collection_name = f"{source_dir}_{self.chunker.name}_{model_slug}"
+            # Sanitize source_dir: replace non-alphanumeric with underscore
+            safe_source = "".join(c if c.isalnum() else "_" for c in source_dir)
+            collection_name = f"{safe_source}_{self.chunker.name}_{model_slug}"
         else:
             collection_name = f"{self.chunker.name}_{model_slug}"
+        
+        if len(collection_name) > 48:
+            collection_name = collection_name[:48]
         
         # Initialize vector store
         self.vector_store = AstraDBVectorStore(
@@ -43,15 +48,11 @@ class RetrievalPipeline:
             token=settings.ASTRA_DB_APPLICATION_TOKEN,
         )
         
-        # Initialize Neo4j graph store for GraphRAG mode (P4)
+        # Initialize Kùzu graph store for GraphRAG mode (P4)
         self.graph_store = None
-        if settings.RETRIEVAL_MODE == "graph":
+        if self.chunker.name == "graph":
             from src.retrieval.graph_store import CodeKnowledgeGraph
-            self.graph_store = CodeKnowledgeGraph(
-                uri=settings.NEO4J_URI,
-                user=settings.NEO4J_USER,
-                password=settings.NEO4J_PASSWORD,
-            )
+            self.graph_store = CodeKnowledgeGraph(db_path=settings.KUZU_DB_DIR)
         
         # Track indexed documents
         self.document_ids: list[str] = []
@@ -73,7 +74,7 @@ class RetrievalPipeline:
         # Build Neo4j knowledge graph if in graph mode
         if self.graph_store and self.chunker.name == "graph":
             self.graph_store.add_entities(chunks)
-            print("Built Neo4j Code Knowledge Graph")
+            print("Built Kùzu Code Knowledge Graph")
         
         # Add to vector store
         self.document_ids = self.vector_store.add_documents(documents=chunks)
@@ -86,9 +87,9 @@ class RetrievalPipeline:
         vector_store = self.vector_store
         graph_store = self.graph_store
         k = settings.RETRIEVAL_K
-        use_graph = settings.RETRIEVAL_MODE == "graph"
-        chunker_name = settings.CHUNKER_NAME  # Add this
-        pipeline_ref = self  # Add reference to self
+        chunker_name = self.chunker.name
+        use_graph = chunker_name == "graph" and graph_store is not None
+        pipeline_ref = self
         
         @tool(response_format="content_and_artifact")
         def retrieve_context(query: str):
@@ -134,7 +135,7 @@ class RetrievalPipeline:
         vector_results = self.vector_store.similarity_search(query, k=k or settings.RETRIEVAL_K)
         
         # Expand with graph traversal for GraphRAG
-        if self.graph_store and settings.RETRIEVAL_MODE == "graph":
+        if self.graph_store and self.chunker.name == "graph":
             entity_names = [
                 doc.metadata.get("name") 
                 for doc in vector_results 

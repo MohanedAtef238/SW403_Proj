@@ -4,13 +4,12 @@ import { Header } from './components/Header';
 import { Sidebar, ChunkingStrategy } from './components/Sidebar';
 import { QueryInput } from './components/QueryInput';
 import { ResultsPanel } from './components/ResultsPanel';
-import { MetricsPanel } from './components/MetricsPanel';
 import { QueryResult, ResultTab } from './types';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
 function App() {
-  const [strategy, setStrategy] = useState<ChunkingStrategy>('code');
+  const [strategy, setStrategy] = useState<ChunkingStrategy>('function');
   const [topK, setTopK] = useState(3);
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
   const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
@@ -107,13 +106,6 @@ function App() {
           endLine: chunk.end_line || 0,
         })),
         reasoning: [],
-        metrics: {
-          retrievalTime: 0,
-          totalTokens: 0,
-          estimatedCost: 0,
-          relevanceScore: 0,
-          detectedComplexity: 'simple' as const,
-        }
       };
 
       setCurrentResult(result);
@@ -232,8 +224,8 @@ function App() {
               onClick={handleSelfCheck}
               disabled={!canSelfCheck}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${canSelfCheck
-                  ? 'bg-purple-600 text-white hover:bg-purple-500'
-                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                ? 'bg-purple-600 text-white hover:bg-purple-500'
+                : 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 }`}
             >
               <ShieldCheck className="w-4 h-4" />
@@ -247,7 +239,6 @@ function App() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-          {currentResult && <MetricsPanel metrics={currentResult.metrics} />}
         </div>
       </div>
     </div>

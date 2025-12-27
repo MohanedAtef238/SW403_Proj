@@ -21,10 +21,6 @@ class Settings:
     
     ASTRA_DB_APPLICATION_TOKEN: str = os.getenv("ASTRA_DB_APPLICATION_TOKEN", "")
     ASTRA_DB_API_ENDPOINT: str = os.getenv("ASTRA_DB_API_ENDPOINT", "")
-    
-    NEO4J_URI: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    NEO4J_USER: str = os.getenv("NEO4J_USER", "neo4j")
-    NEO4J_PASSWORD: str = os.getenv("NEO4J_PASSWORD", "")
 
     # LLM Configuration
     LLM_MODEL: str = "qwen/qwen3-32b"
@@ -38,10 +34,10 @@ class Settings:
 
     # Chunking Configuration
     # Options: "function" (P1), "ast" (P2), "context" (P3), "graph" (P4)
-    CHUNKING_STRATEGY: str = "graph"
+    CHUNKING_STRATEGY: str = "function"
     
-    # Retrieval Mode: "vector" or "graph"
-    RETRIEVAL_MODE: str = "graph"
+    # Retrieval Mode: "vector" (P1-P3) or "graph" (P4)
+    RETRIEVAL_MODE: str = "vector"
 
     # Recursive chunker settings
     CHUNK_SIZE: int = 1000
@@ -57,6 +53,7 @@ class Settings:
     BASE_DIR: Path = Path(__file__).parent.parent.parent
     DATA_DIR: Path = BASE_DIR / "data"
     VECTOR_DB_DIR: str = str(BASE_DIR / "chroma_db")
+    KUZU_DB_DIR: str = str(BASE_DIR / "kuzu_db")
 
     def __init__(self):
         # Set environment variables for LangChain/LangSmith
@@ -67,9 +64,7 @@ class Settings:
         os.environ["ASTRA_DB_APPLICATION_TOKEN"] = self.ASTRA_DB_APPLICATION_TOKEN
         os.environ["ASTRA_DB_API_ENDPOINT"] = self.ASTRA_DB_API_ENDPOINT
         
-        os.environ["NEO4J_URI"] = self.NEO4J_URI
-        os.environ["NEO4J_USER"] = self.NEO4J_USER
-        os.environ["NEO4J_PASSWORD"] = self.NEO4J_PASSWORD
+
 
 
 settings = Settings()

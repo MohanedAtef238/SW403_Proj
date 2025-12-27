@@ -83,9 +83,10 @@ async def update_config(request: ConfigUpdateRequest):
     if request.chunking_strategy is not None:
         strategy = request.chunking_strategy.value
         settings.CHUNKING_STRATEGY = strategy
-        if strategy in ["recursive", "code", "ast"]:
+        # P1-P3 use vector retrieval, P4 uses graph retrieval
+        if strategy in ["function", "ast", "context"]:
             settings.RETRIEVAL_MODE = "vector"
-        elif strategy == "graphrag":
+        elif strategy == "graph":
             settings.RETRIEVAL_MODE = "graph"
     if request.retrieval_k is not None:
         settings.RETRIEVAL_K = request.retrieval_k

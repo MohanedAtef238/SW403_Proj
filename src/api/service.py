@@ -121,9 +121,9 @@ class RAGService:
             return self.pipelines[collection_name]
         
         parts = collection_name.split("_")
-        strategy_name = "recursive"
+        strategy_name = "function"  # Default to P1
         for part in parts:
-            if part in ("recursive", "code", "ast", "graphrag"):
+            if part in ("function", "ast", "context", "graph"):
                 strategy_name = part
                 break
         
@@ -134,18 +134,18 @@ class RAGService:
         )
         
         from langchain_huggingface import HuggingFaceEmbeddings
-        from langchain_chroma import Chroma
+        from langchain_astradb import AstraDBVectorStore
         
         embeddings = HuggingFaceEmbeddings(model_name=settings.EMBEDDING_MODEL)
-        chroma = Chroma(
+        vector_store = AstraDBVectorStore(
             collection_name=collection_name,
-            embedding_function=embeddings,
-            persist_directory=settings.VECTOR_DB_DIR,
+            embedding=embeddings,
+            api_endpoint=settings.ASTRA_DB_API_ENDPOINT,
+            token=settings.ASTRA_DB_APPLICATION_TOKEN,
         )
         
         pipeline = RetrievalPipeline(chunker=chunker)
-        pipeline.chroma = chroma
-        pipeline.vector_store = chroma
+        pipeline.vector_store = vector_store
         pipeline.embeddings = embeddings
         
         self.pipelines[collection_name] = pipeline
@@ -199,7 +199,10 @@ class RAGService:
             
             # Build collection name (matches RetrievalPipeline naming)
             model_slug = settings.LLM_MODEL.split("/")[-1].replace("-", "_").replace(".", "_")
-            collection_name = f"{source_dir}_{strategy.value}_{model_slug}"
+            safe_source = "".join(c if c.isalnum() else "_" for c in source_dir)
+            collection_name = f"{safe_source}_{strategy.value}_{model_slug}"
+            if len(collection_name) > 48:
+                collection_name = collection_name[:48]
             
         return len(docs), len(doc_ids), collection_name
 
@@ -239,12 +242,20 @@ class RAGService:
         return similarity, is_hallucinating
 
     def list_collections(self) -> list[str]:
-        """List all available ChromaDB collections."""
-        import chromadb
-
-        client = chromadb.PersistentClient(path=str(settings.VECTOR_DB_DIR))
-        collections = client.list_collections()
-        return [col.name for col in collections]
+        """List all available collections from AstraDB."""
+        from langchain_astradb import AstraDBVectorStore
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from astrapy import DataAPIClient
+        
+        # Use AstraDB client to list collections
+        client = DataAPIClient(settings.ASTRA_DB_APPLICATION_TOKEN)
+        db = client.get_database(settings.ASTRA_DB_API_ENDPOINT)
+        
+        collections = []
+        for coll in db.list_collection_names():
+            collections.append(coll)
+        
+        return collections
 
    
 

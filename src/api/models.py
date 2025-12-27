@@ -12,9 +12,6 @@ class ChunkingStrategy(str, Enum):
     AST = "ast"             # P2: cAST
     CONTEXT = "context"     # P3: Context-enriched
     GRAPH = "graph"         # P4: GraphRAG
-    # Legacy
-    RECURSIVE = "recursive"
-    CODE = "code"
 
 
 class IndexRequest(BaseModel):
@@ -24,7 +21,7 @@ class IndexRequest(BaseModel):
         description="List of file paths to index"
     )
     strategy: ChunkingStrategy = Field(
-        default=ChunkingStrategy.CODE,
+        default=ChunkingStrategy.FUNCTION,
         description="Chunking strategy to use"
     )
 
@@ -51,7 +48,7 @@ class QueryRequest(BaseModel):
     """Request model for querying the RAG system."""
     query: str = Field(..., description="The question to ask")
     strategy: ChunkingStrategy = Field(
-        default=ChunkingStrategy.CODE,
+        default=ChunkingStrategy.FUNCTION,
         description="Chunking strategy to use for retrieval"
     )
     k: int = Field(

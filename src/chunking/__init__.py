@@ -43,9 +43,6 @@ def get_chunker(strategy: str, **kwargs) -> BaseChunker:
         "ast": ASTChunker,             # P2
         "context": ContextEnrichedChunker,  # P3
         "graph": GraphChunker,         # P4
-        # Legacy
-        "recursive": RecursiveChunker,
-        "code": CodeChunker,
     }
     
     if strategy not in chunkers:

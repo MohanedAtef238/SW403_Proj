@@ -1,8 +1,8 @@
 import { Info, ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import { useState } from 'react';
 
-// Simplified types for the API-supported options
-export type ChunkingStrategy = 'recursive' | 'code' | 'ast' | 'graphrag';
+// P1-P4 strategy types matching the backend
+export type ChunkingStrategy = 'function' | 'ast' | 'context' | 'graph';
 
 interface SidebarProps {
   strategy: ChunkingStrategy;
@@ -15,10 +15,10 @@ interface SidebarProps {
 }
 
 const strategies = [
-  { value: 'recursive' as const, label: 'Recursive', description: 'Simple text chunking with overlap', disabled: false },
-  { value: 'code' as const, label: 'Code', description: 'Language-aware code splitting', disabled: false },
-  { value: 'ast' as const, label: 'AST', description: 'Syntax-aware code splitting using AST', disabled: false },
-  { value: 'graphrag' as const, label: 'GraphRAG', description: 'Graph-based knowledge retrieval', disabled: false },
+  { value: 'function' as const, label: 'P1: Function', description: 'Function-level baseline chunking', disabled: false },
+  { value: 'ast' as const, label: 'P2: cAST', description: 'Syntax-aware code splitting using AST', disabled: false },
+  { value: 'context' as const, label: 'P3: Context', description: 'Context-enriched chunking with positioning', disabled: false },
+  { value: 'graph' as const, label: 'P4: GraphRAG', description: 'Graph-based knowledge retrieval', disabled: false },
 ];
 
 function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
